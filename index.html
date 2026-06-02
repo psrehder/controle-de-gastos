@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GR_Controle</title>
+    <link rel="stylesheet" href="styles.css">
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- LZ-String para Compressão de URL -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/lz-string/1.5.0/lz-string.min.js"></script>
+    <!-- QRious para Geração de QR Code -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
+</head>
+<body>
+
+    <!-- Header Section -->
+    <header>
+        <div class="logo-container">
+            <span class="logo-icon">📊</span>
+            <h1 class="logo-text">GR_Controle</h1>
+            <span class="logo-badge">Pro</span>
+        </div>
+        <div class="header-actions">
+            <button class="btn btn-secondary" id="btnShareLink" title="Gerar link de compartilhamento para sincronizar dados">
+                🔗 Compartilhar Link
+            </button>
+            <button class="btn btn-secondary" id="btnImportCsv" title="Importar arquivo CSV ou JSON de backup">
+                📥 Importar Arquivo
+            </button>
+            <button class="btn btn-secondary" id="btnExportCsv" title="Exportar dados para Excel/CSV">
+                📤 Exportar CSV
+            </button>
+            <button class="btn btn-secondary" id="btnExportJson" title="Exportar um backup JSON para carregar em outra máquina">
+                📁 Exportar Backup
+            </button>
+            <button class="btn btn-danger" id="btnResetData" title="Limpar tudo e recarregar dados de demonstração">
+                🔄 Resetar
+            </button>
+            <button class="btn btn-primary" id="btnNewTransaction">
+                ➕ Novo Lançamento
+            </button>
+            <input type="file" id="csvFileInput" accept=".csv,.json" style="display: none;">
+        </div>
+    </header>
+
+    <div class="container">
+        
+        <!-- KPI Cards Grid -->
+        <section class="kpi-grid">
+            <!-- Saldo Card -->
+            <div class="kpi-card balance" id="cardBalance">
+                <div class="kpi-header">
+                    <span>Saldo Total</span>
+                    <span class="kpi-icon">💰</span>
+                </div>
+                <div class="kpi-value" id="valBalance">R$ 0,00</div>
+                <div class="kpi-footer neutral" id="footerBalance">
+                    Saldo consolidado em conta
+                </div>
+            </div>
+            
+            <!-- Receitas Card -->
+            <div class="kpi-card income" id="cardIncome">
+                <div class="kpi-header">
+                    <span>Receitas (Mês)</span>
+                    <span class="kpi-icon">📈</span>
+                </div>
+                <div class="kpi-value" id="valIncome">R$ 0,00</div>
+                <div class="kpi-footer positive" id="footerIncome">
+                    +0% em relação ao mês anterior
+                </div>
+            </div>
+
+            <!-- Despesas Card -->
+            <div class="kpi-card expense" id="cardExpense">
+                <div class="kpi-header">
+                    <span>Despesas (Mês)</span>
+                    <span class="kpi-icon">📉</span>
+                </div>
+                <div class="kpi-value" id="valExpense">R$ 0,00</div>
+                <div class="kpi-footer negative" id="footerExpense">
+                    -0% em relação ao mês anterior
+                </div>
+            </div>
+
+            <!-- Poupança Card -->
+            <div class="kpi-card savings" id="cardSavings">
+                <div class="kpi-header">
+                    <span>Taxa de Poupança</span>
+                    <span class="kpi-icon">🛡️</span>
+                </div>
+                <div class="kpi-value" id="valSavings">0%</div>
+                <div class="kpi-footer neutral" id="footerSavings">
+                    Guardado este mês
+                </div>
+            </div>
+
+            <!-- Alertas de Limites Card -->
+            <div class="kpi-card budget-alerts" id="cardAlerts">
+                <div class="kpi-header">
+                    <span>Limites e Alertas</span>
+                    <span class="kpi-icon">⚙️</span>
+                </div>
+                <div class="kpi-value" id="valAlerts">OK</div>
+                <div class="kpi-footer positive" id="footerAlerts">
+                    Orçamentos dentro do planejado
+                </div>
+            </div>
+        </section>
+
+        <!-- Charts and Automation Row -->
+        <section class="dashboard-middle">
+            
+            <!-- Visual Charts Panel -->
+            <div class="panel">
+                <div class="panel-header">
+                    <h2 class="panel-title">📊 Análise Visual</h2>
+                    <span style="font-size: 0.75rem; color: var(--text-muted)">Atualiza em tempo real</span>
+                </div>
+                <div class="charts-grid">
+                    <div class="chart-container">
+                        <canvas id="chartCashFlow"></canvas>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="chartCategories"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Automations and Budgets Management -->
+            <div class="panel">
+                <div class="panel-header">
+                    <h2 class="panel-title">⚡ Automações & Regras</h2>
+                </div>
+                
+                <!-- Tab headers -->
+                <div class="tabs">
+                    <button class="tab-btn active" data-tab="tabRecurring">Recorrentes</button>
+                    <button class="tab-btn" data-tab="tabBudgets">Orçamentos</button>
+                    <button class="tab-btn" data-tab="tabRules">Regras Inteligentes</button>
+                </div>
+
+                <!-- Tab: Recurring Transactions -->
+                <div class="tab-content active" id="tabRecurring">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+                        <span style="font-size: 0.75rem; color: var(--text-muted)">Agendamentos mensais</span>
+                        <button class="btn btn-secondary" style="padding: 0.3rem 0.6rem; font-size: 0.75rem;" id="btnAddRecurring">
+                            + Novo
+                        </button>
+                    </div>
+                    <div class="rules-grid" id="listRecurring">
+                        <!-- Filled by JS -->
+                    </div>
+                </div>
+
+                <!-- Tab: Budgets Limits -->
+                <div class="tab-content" id="tabBudgets">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+                        <span style="font-size: 0.75rem; color: var(--text-muted)">Metas de gastos mensais</span>
+                        <button class="btn btn-secondary" style="padding: 0.3rem 0.6rem; font-size: 0.75rem;" id="btnAddBudget">
+                            + Definir
+                        </button>
+                    </div>
+                    <div class="rules-grid" id="listBudgets">
+                        <!-- Filled by JS -->
+                    </div>
+                </div>
+
+                <!-- Tab: Smart Categorization Rules -->
+                <div class="tab-content" id="tabRules">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+                        <span style="font-size: 0.75rem; color: var(--text-muted)">Auto-categorizar por palavra-chave</span>
+                        <button class="btn btn-secondary" style="padding: 0.3rem 0.6rem; font-size: 0.75rem;" id="btnAddRule">
+                            + Regra
+                        </button>
+                    </div>
+                    <div class="rules-grid" id="listRules">
+                        <!-- Filled by JS -->
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Bottom Grid: Main Interactive Spreadsheet -->
+        <section class="panel spreadsheet-panel">
+            <div class="panel-header" style="margin-bottom: 0;">
+                <h2 class="panel-title">✏️ Planilha de Lançamentos</h2>
+                <span style="font-size: 0.75rem; color: var(--text-muted)">Dica: Dê dois cliques em qualquer célula para editá-la diretamente</span>
+            </div>
+
+            <!-- Spreadsheet Grid Controls -->
+            <div class="table-controls">
+                <div class="search-box-container">
+                    <span class="search-icon">🔍</span>
+                    <input type="text" class="search-input" id="searchTransactions" placeholder="Pesquisar lançamentos por descrição ou conta...">
+                </div>
+                <div class="filter-group">
+                    <select class="select-filter" id="filterCategory">
+                        <option value="">Todas as Categorias</option>
+                        <!-- Added dynamically -->
+                    </select>
+                    <select class="select-filter" id="filterType">
+                        <option value="">Todos os Tipos</option>
+                        <option value="receita">Receitas</option>
+                        <option value="despesa">Despesas</option>
+                    </select>
+                    <select class="select-filter" id="filterStatus">
+                        <option value="">Todos os Status</option>
+                        <option value="pago">Pago / Recebido</option>
+                        <option value="pendente">Pendente</option>
+                    </select>
+                    <button class="btn btn-secondary" id="btnClearFilters" style="padding: 0.5rem 0.8rem;" title="Limpar Filtros">
+                        🧹 Limpar
+                    </button>
+                </div>
+            </div>
+
+            <!-- Spreadsheet View Grid -->
+            <div class="table-wrapper">
+                <table class="sheet-table" id="transactionTable">
+                    <thead>
+                        <tr>
+                            <th style="width: 50px;">Ação</th>
+                            <th class="sortable" data-sort="date" style="width: 130px;">Data ⇅</th>
+                            <th class="sortable" data-sort="description">Descrição ⇅</th>
+                            <th class="sortable" data-sort="category" style="width: 150px;">Categoria ⇅</th>
+                            <th class="sortable" data-sort="type" style="width: 120px;">Tipo ⇅</th>
+                            <th class="sortable" data-sort="amount" style="width: 140px; text-align: right;">Valor (R$) ⇅</th>
+                            <th class="sortable" data-sort="account" style="width: 150px;">Conta / Origem ⇅</th>
+                            <th class="sortable" data-sort="status" style="width: 120px;">Status ⇅</th>
+                        </tr>
+                    </thead>
+                    <tbody id="transactionList">
+                        <!-- Filled by JS -->
+                    </tbody>
+                </table>
+            </div>
+            
+            <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 0.5rem;">
+                <button class="btn btn-secondary" id="btnAddRow" style="font-size: 0.8rem; padding: 0.4rem 0.8rem;">
+                    ➕ Inserir Linha Rápida
+                </button>
+                <div id="tableCount" style="font-size: 0.75rem; color: var(--text-muted)">
+                    Exibindo 0 lançamentos
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <!-- Modais -->
+
+    <!-- 1. Modal: Novo Lançamento -->
+    <div class="modal-backdrop" id="modalTransaction">
+        <div class="modal-card">
+            <h3 class="modal-title">📝 Novo Lançamento</h3>
+            <form id="formTransaction">
+                <div class="form-group">
+                    <label for="txDate">Data</label>
+                    <input type="date" id="txDate" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label for="txDescription">Descrição</label>
+                    <input type="text" id="txDescription" class="form-control" placeholder="Ex: Salário, Uber, Almoço..." required>
+                </div>
+                <div class="form-group">
+                    <label for="txCategory">Categoria</label>
+                    <select id="txCategory" class="form-control" required>
+                        <option value="Alimentação">Alimentação</option>
+                        <option value="Transporte">Transporte</option>
+                        <option value="Moradia">Moradia</option>
+                        <option value="Lazer">Lazer</option>
+                        <option value="Saúde">Saúde</option>
+                        <option value="Educação">Educação</option>
+                        <option value="Receitas">Receitas</option>
+                        <option value="Outros">Outros</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="txType">Tipo</label>
+                    <select id="txType" class="form-control" required>
+                        <option value="despesa">Despesa (Saída)</option>
+                        <option value="receita">Receita (Entrada)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="txAmount">Valor (R$)</label>
+                    <input type="number" id="txAmount" step="0.01" class="form-control" placeholder="0,00" required>
+                </div>
+                <div class="form-group">
+                    <label for="txAccount">Conta / Origem</label>
+                    <input type="text" id="txAccount" class="form-control" placeholder="Ex: Nubank, Itaú, Dinheiro" required>
+                </div>
+                <div class="form-group">
+                    <label for="txStatus">Status</label>
+                    <select id="txStatus" class="form-control" required>
+                        <option value="pago">Pago / Recebido</option>
+                        <option value="pendente">Pendente</option>
+                    </select>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-secondary closeModalBtn">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Salvar Lançamento</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 2. Modal: Nova Transação Recorrente -->
+    <div class="modal-backdrop" id="modalRecurring">
+        <div class="modal-card">
+            <h3 class="modal-title">📅 Novo Agendamento Recorrente</h3>
+            <form id="formRecurring">
+                <div class="form-group">
+                    <label for="recDay">Dia do Lançamento (Dia do mês)</label>
+                    <input type="number" id="recDay" class="form-control" min="1" max="31" placeholder="1 a 31" required>
+                </div>
+                <div class="form-group">
+                    <label for="recDescription">Descrição</label>
+                    <input type="text" id="recDescription" class="form-control" placeholder="Ex: Aluguel, Assinatura Netflix..." required>
+                </div>
+                <div class="form-group">
+                    <label for="recCategory">Categoria</label>
+                    <select id="recCategory" class="form-control" required>
+                        <option value="Alimentação">Alimentação</option>
+                        <option value="Transporte">Transporte</option>
+                        <option value="Moradia">Moradia</option>
+                        <option value="Lazer">Lazer</option>
+                        <option value="Saúde">Saúde</option>
+                        <option value="Educação">Educação</option>
+                        <option value="Receitas">Receitas</option>
+                        <option value="Outros">Outros</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="recType">Tipo</label>
+                    <select id="recType" class="form-control" required>
+                        <option value="despesa">Despesa (Saída)</option>
+                        <option value="receita">Receita (Entrada)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="recAmount">Valor (R$)</label>
+                    <input type="number" id="recAmount" step="0.01" class="form-control" placeholder="0,00" required>
+                </div>
+                <div class="form-group">
+                    <label for="recAccount">Conta / Origem</label>
+                    <input type="text" id="recAccount" class="form-control" placeholder="Ex: Nubank, Itaú" required>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-secondary closeModalBtn">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Salvar Agendamento</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 3. Modal: Novo Limite de Orçamento -->
+    <div class="modal-backdrop" id="modalBudget">
+        <div class="modal-card">
+            <h3 class="modal-title">🛡️ Definir Limite de Categoria</h3>
+            <form id="formBudget">
+                <div class="form-group">
+                    <label for="bdCategory">Categoria</label>
+                    <select id="bdCategory" class="form-control" required>
+                        <!-- Added dynamically -->
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="bdLimit">Teto de Gastos Mensal (R$)</label>
+                    <input type="number" id="bdLimit" step="0.01" class="form-control" placeholder="Ex: 500,00" required>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-secondary closeModalBtn">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Definir Limite</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 4. Modal: Nova Regra Inteligente -->
+    <div class="modal-backdrop" id="modalRule">
+        <div class="modal-card">
+            <h3 class="modal-title">⚡ Nova Regra Inteligente</h3>
+            <form id="formRule">
+                <div class="form-group">
+                    <label for="rlKeyword">Se a descrição contiver o termo (Palavra-chave)</label>
+                    <input type="text" id="rlKeyword" class="form-control" placeholder="Ex: Uber, Mercado, Netflix" required>
+                </div>
+                <div class="form-group">
+                    <label for="rlCategory">Atribuir automaticamente a Categoria</label>
+                    <select id="rlCategory" class="form-control" required>
+                        <option value="Alimentação">Alimentação</option>
+                        <option value="Transporte">Transporte</option>
+                        <option value="Moradia">Moradia</option>
+                        <option value="Lazer">Lazer</option>
+                        <option value="Saúde">Saúde</option>
+                        <option value="Educação">Educação</option>
+                        <option value="Receitas">Receitas</option>
+                        <option value="Outros">Outros</option>
+                    </select>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-secondary closeModalBtn">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Salvar Regra</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 5. Modal: Compartilhar Link -->
+    <div class="modal-backdrop" id="modalShare">
+        <div class="modal-card" style="max-width: 420px; text-align: center;">
+            <h3 class="modal-title" style="justify-content: center;">🔗 Compartilhar Dados</h3>
+            <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1.5rem;">
+                Envie seus lançamentos e regras para outro computador ou celular.
+            </p>
+            
+            <div style="background: white; padding: 1rem; border-radius: var(--radius-md); display: inline-block; margin-bottom: 1.25rem;">
+                <canvas id="qrCodeCanvas"></canvas>
+            </div>
+            <p style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 1.25rem;">
+                Escaneie com a câmera do celular para abrir instantaneamente.
+            </p>
+
+            <div class="form-group" style="text-align: left;">
+                <label for="shareLinkInput">Link de Sincronização</label>
+                <div style="display: flex; gap: 0.5rem;">
+                    <input type="text" id="shareLinkInput" class="form-control" readonly style="flex: 1; font-size: 0.8rem;">
+                    <button class="btn btn-primary" id="btnCopyShareLink" style="padding: 0.65rem 1rem;">
+                        Copiar
+                    </button>
+                </div>
+            </div>
+            
+            <div class="modal-actions" style="justify-content: center; margin-top: 1rem;">
+                <button type="button" class="btn btn-secondary closeModalBtn" style="width: 100%;">Fechar</button>
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        <p>&copy; 2026 GR_Controle - Planilha Inteligente de Controle Financeiro de Respeito.</p>
+        <p style="font-size: 0.7rem; margin-top: 0.25rem; color: var(--text-muted);">Desenvolvido de forma autônoma para controle financeiro otimizado.</p>
+    </footer>
+
+    <!-- App Script -->
+    <script src="app.js"></script>
+</body>
+</html>
